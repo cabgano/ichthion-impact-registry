@@ -3,12 +3,68 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { impactNavItems } from "@/lib/impact/navigation";
-import type { ImpactUserPermissions } from "@/lib/impact/types";
+import {
+  impactNavItems,
+  type ImpactNavItem,
+} from "@/lib/impact/navigation";
+
+import type {
+  ImpactUserPermissions,
+} from "@/lib/impact/types";
 
 type ImpactNavProps = {
   permissions: ImpactUserPermissions;
 };
+
+function canViewNavItem(
+  item: ImpactNavItem,
+  permissions: ImpactUserPermissions
+) {
+  if (item.access === "operate") {
+    return permissions.can_operate_impact;
+  }
+
+  return permissions.can_read;
+}
+
+function isNavItemActive(
+  pathname: string,
+  href: string
+) {
+  if (href === "/impact") {
+    return pathname === "/impact";
+  }
+
+  if (href === "/impact/evidence/new") {
+    return (
+      pathname === href ||
+      pathname.startsWith(
+        `${href}/`
+      )
+    );
+  }
+
+  if (href === "/impact/evidence") {
+    return (
+      pathname === href ||
+      (
+        pathname.startsWith(
+          `${href}/`
+        ) &&
+        !pathname.startsWith(
+          "/impact/evidence/new"
+        )
+      )
+    );
+  }
+
+  return (
+    pathname === href ||
+    pathname.startsWith(
+      `${href}/`
+    )
+  );
+}
 
 export function ImpactNav({
   permissions,
@@ -16,23 +72,22 @@ export function ImpactNav({
   const pathname = usePathname();
 
   const visibleNavItems =
-    impactNavItems.filter((item) => {
-      if (item.access === "operate") {
-        return permissions.can_operate_impact;
-      }
-
-      return permissions.can_read;
-    });
+    impactNavItems.filter(
+      (item) =>
+        canViewNavItem(
+          item,
+          permissions
+        )
+    );
 
   return (
     <nav className="flex flex-col gap-2">
       {visibleNavItems.map((item) => {
         const isActive =
-          item.href === "/impact"
-            ? pathname === "/impact"
-            : pathname.startsWith(
-                item.href
-              );
+          isNavItemActive(
+            pathname,
+            item.href
+          );
 
         return (
           <Link

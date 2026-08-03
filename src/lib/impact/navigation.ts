@@ -11,6 +11,13 @@ export type ImpactNavItem = {
 
 export const impactNavItems: ImpactNavItem[] = [
   {
+    href: "/impact/evidence",
+    label: "Evidence Review",
+    description:
+      "Revisar paquetes pendientes y su integridad documental.",
+    access: "read",
+  },
+  {
     href: "/impact/evidence/new",
     label: "New Evidence",
     description:
