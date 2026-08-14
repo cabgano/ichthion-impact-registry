@@ -1,5 +1,7 @@
 import Link from "next/link";
+
 import { ImpactStatusPill } from "@/components/impact/ImpactStatusPill";
+
 import type {
   AllocationSource,
   AllocationWithDetails,
@@ -21,7 +23,10 @@ function pickString(
   for (const key of keys) {
     const value = record[key];
 
-    if (typeof value === "string" && value.trim().length > 0) {
+    if (
+      typeof value === "string" &&
+      value.trim().length > 0
+    ) {
       return value;
     }
 
@@ -33,102 +38,223 @@ function pickString(
   return fallback;
 }
 
-function pickNumber(record: ImpactRawRecord | null, keys: string[]) {
+function pickNumber(
+  record: ImpactRawRecord | null,
+  keys: string[]
+) {
   if (!record) return null;
 
   for (const key of keys) {
     const value = record[key];
 
-    if (typeof value === "number") return value;
+    if (typeof value === "number") {
+      return value;
+    }
 
-    if (typeof value === "string" && value.trim().length > 0) {
-      const parsed = Number.parseFloat(value);
-      if (!Number.isNaN(parsed)) return parsed;
+    if (
+      typeof value === "string" &&
+      value.trim().length > 0
+    ) {
+      const parsed =
+        Number.parseFloat(value);
+
+      if (!Number.isNaN(parsed)) {
+        return parsed;
+      }
     }
   }
 
   return null;
 }
 
-function formatNumber(value: ImpactRawValue) {
-  if (value === null || value === undefined) return "—";
+function formatNumber(
+  value: ImpactRawValue
+) {
+  if (
+    value === null ||
+    value === undefined
+  ) {
+    return "—";
+  }
 
   const numericValue =
-    typeof value === "string" ? Number.parseFloat(value) : Number(value);
+    typeof value === "string"
+      ? Number.parseFloat(value)
+      : Number(value);
 
-  if (Number.isNaN(numericValue)) return String(value);
+  if (
+    Number.isNaN(numericValue)
+  ) {
+    return String(value);
+  }
 
-  return new Intl.NumberFormat("en-US", {
-    maximumFractionDigits: 2,
-  }).format(numericValue);
+  return new Intl.NumberFormat(
+    "en-US",
+    {
+      maximumFractionDigits: 2,
+    }
+  ).format(numericValue);
 }
 
-function shortenHash(hash: string) {
-  if (hash.length <= 24) return hash;
-  return `${hash.slice(0, 12)}...${hash.slice(-8)}`;
+function shortenHash(
+  hash: string
+) {
+  if (hash.length <= 24) {
+    return hash;
+  }
+
+  return `${hash.slice(
+    0,
+    12
+  )}...${hash.slice(-8)}`;
 }
 
-function sumSourceCents(sources: AllocationSource[]) {
-  return sources.reduce((total, source) => {
-    const cents =
-      pickNumber(source, ["viu_cents", "assigned_viu_cents"]) ?? 0;
+function sumSourceCents(
+  sources: AllocationSource[]
+) {
+  return sources.reduce(
+    (total, source) => {
+      const cents =
+        pickNumber(
+          source,
+          [
+            "viu_cents",
+            "assigned_viu_cents",
+          ]
+        ) ?? 0;
 
-    return total + cents;
-  }, 0);
+      return total + cents;
+    },
+    0
+  );
 }
 
-export function AllocationCard({ item }: AllocationCardProps) {
-  const { allocation, client, sources } = item;
-
-  const allocationReference = pickString(allocation, [
-    "allocation_reference",
-    "reference",
-    "permanent_id",
-    "id",
-  ]);
-
-  const status = pickString(
+export function AllocationCard({
+  item,
+}: AllocationCardProps) {
+  const {
     allocation,
-    ["allocation_status", "status"],
-    "unknown"
-  );
-
-  const clientName = pickString(
     client,
-    ["client_name", "name", "client_code", "code"],
-    pickString(allocation, ["client_name", "client_code"], "Unknown client")
-  );
+    sources,
+  } = item;
 
-  const directCents = pickNumber(allocation, [
-    "total_viu_cents",
-    "viu_cents",
-    "allocated_viu_cents",
-    "total_allocated_viu_cents",
-  ]);
+  const allocationReference =
+    pickString(
+      allocation,
+      [
+        "allocation_reference",
+        "reference",
+        "permanent_id",
+        "id",
+      ]
+    );
 
-  const totalCents = directCents ?? sumSourceCents(sources);
+  const status =
+    pickString(
+      allocation,
+      [
+        "allocation_status",
+        "status",
+      ],
+      "unknown"
+    );
 
-  const directViu = pickNumber(allocation, [
-    "total_viu_amount",
-    "viu_amount",
-    "allocated_viu_amount",
-  ]);
+  const normalizedStatus =
+    status.toLowerCase();
 
-  const totalViu = directViu ?? totalCents / 100;
+  const clientName =
+    pickString(
+      client,
+      [
+        "display_name",
+        "client_name",
+        "name",
+        "client_code",
+        "code",
+      ],
+      pickString(
+        allocation,
+        [
+          "client_display_name",
+          "client_name",
+          "client_code",
+        ],
+        "Unknown client"
+      )
+    );
+
+  const directCents =
+    pickNumber(
+      allocation,
+      [
+        "assigned_viu_cents",
+        "total_viu_cents",
+        "viu_cents",
+        "allocated_viu_cents",
+        "total_allocated_viu_cents",
+      ]
+    );
+
+  const totalCents =
+    directCents ??
+    sumSourceCents(sources);
+
+  const directViu =
+    pickNumber(
+      allocation,
+      [
+        "assigned_viu_amount",
+        "total_viu_amount",
+        "viu_amount",
+        "allocated_viu_amount",
+      ]
+    );
+
+  const totalViu =
+    directViu ??
+    totalCents / 100;
 
   const kgEquivalent =
-    pickNumber(allocation, ["kg_equivalent", "total_kg_equivalent"]) ??
+    pickNumber(
+      allocation,
+      [
+        "assigned_kg_equivalent",
+        "kg_equivalent",
+        "total_kg_equivalent",
+      ]
+    ) ??
     totalCents * 10;
 
-  const manifestHash = pickString(
-    allocation,
-    ["allocation_manifest_hash", "manifest_hash"],
-    "No hash"
-  );
+  const manifestHash =
+    pickString(
+      allocation,
+      [
+        "allocation_manifest_hash",
+        "manifest_hash",
+      ],
+      "No hash"
+    );
+
+  const allocationId =
+    pickString(
+      allocation,
+      ["id"],
+      ""
+    );
 
   const verifyHref =
     allocationReference !== "—"
-      ? `/impact/verify/allocation/${encodeURIComponent(allocationReference)}`
+      ? `/impact/verify/allocation/${encodeURIComponent(
+          allocationReference
+        )}`
+      : null;
+
+  const manageHref =
+    normalizedStatus === "draft" &&
+    allocationId
+      ? `/impact/allocations/${encodeURIComponent(
+          allocationId
+        )}`
       : null;
 
   return (
@@ -138,12 +264,15 @@ export function AllocationCard({ item }: AllocationCardProps) {
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Client Allocation
           </p>
+
           <h3 className="mt-1 text-lg font-bold text-slate-950">
             {allocationReference}
           </h3>
         </div>
 
-        <ImpactStatusPill status={status} />
+        <ImpactStatusPill
+          status={status}
+        />
       </div>
 
       <div className="mt-4 grid gap-3 text-sm">
@@ -151,7 +280,10 @@ export function AllocationCard({ item }: AllocationCardProps) {
           <p className="text-xs font-semibold uppercase text-slate-400">
             Client
           </p>
-          <p className="font-medium text-slate-900">{clientName}</p>
+
+          <p className="font-medium text-slate-900">
+            {clientName}
+          </p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -159,11 +291,18 @@ export function AllocationCard({ item }: AllocationCardProps) {
             <p className="text-xs font-semibold uppercase text-slate-400">
               Total VIU
             </p>
+
             <p className="font-bold text-slate-950">
-              {formatNumber(totalViu)}
+              {formatNumber(
+                totalViu
+              )}
             </p>
+
             <p className="text-xs text-slate-500">
-              {formatNumber(totalCents)} cent_VIUs
+              {formatNumber(
+                totalCents
+              )}{" "}
+              cent_VIUs
             </p>
           </div>
 
@@ -171,10 +310,16 @@ export function AllocationCard({ item }: AllocationCardProps) {
             <p className="text-xs font-semibold uppercase text-slate-400">
               kg equivalent
             </p>
+
             <p className="font-bold text-slate-950">
-              {formatNumber(kgEquivalent)}
+              {formatNumber(
+                kgEquivalent
+              )}
             </p>
-            <p className="text-xs text-slate-500">kg assigned</p>
+
+            <p className="text-xs text-slate-500">
+              kg assigned
+            </p>
           </div>
         </div>
 
@@ -182,8 +327,14 @@ export function AllocationCard({ item }: AllocationCardProps) {
           <p className="text-xs font-semibold uppercase text-slate-400">
             Allocation Hash
           </p>
+
           <p className="break-all font-mono text-xs text-slate-600">
-            {manifestHash === "No hash" ? manifestHash : shortenHash(manifestHash)}
+            {manifestHash ===
+            "No hash"
+              ? manifestHash
+              : shortenHash(
+                  manifestHash
+                )}
           </p>
         </div>
 
@@ -194,47 +345,94 @@ export function AllocationCard({ item }: AllocationCardProps) {
 
           {sources.length > 0 ? (
             <div className="mt-2 space-y-2">
-              {sources.map((source, index) => {
-                const sourcePermanentId = pickString(source, [
-                  "source_permanent_id",
-                  "viu_asset_id",
-                  "fractional_tranche_id",
-                  "id",
-                ]);
-
-                const sourceType = pickString(source, ["source_type"]);
-                const sourceStatus = pickString(
+              {sources.map(
+                (
                   source,
-                  ["source_status", "status"],
-                  "unknown"
-                );
+                  index
+                ) => {
+                  const sourcePermanentId =
+                    pickString(
+                      source,
+                      [
+                        "source_permanent_id",
+                        "viu_asset_id",
+                        "fractional_tranche_id",
+                        "id",
+                      ]
+                    );
 
-                const sourceCents =
-                  pickNumber(source, ["viu_cents", "assigned_viu_cents"]) ?? 0;
+                  const sourceType =
+                    pickString(
+                      source,
+                      [
+                        "source_type",
+                      ]
+                    );
 
-                const sourceViu =
-                  pickNumber(source, ["viu_amount"]) ?? sourceCents / 100;
+                  const sourceStatus =
+                    pickString(
+                      source,
+                      [
+                        "source_status",
+                        "status",
+                      ],
+                      "unknown"
+                    );
 
-                return (
-                  <div
-                    key={`${sourcePermanentId}-${index}`}
-                    className="rounded-xl border border-slate-200 bg-slate-50 p-3"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="font-medium text-slate-900">
-                          {sourcePermanentId}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {sourceType} · {formatNumber(sourceViu)} VIU
-                        </p>
+                  const sourceCents =
+                    pickNumber(
+                      source,
+                      [
+                        "viu_cents",
+                        "assigned_viu_cents",
+                      ]
+                    ) ?? 0;
+
+                  const sourceViu =
+                    pickNumber(
+                      source,
+                      [
+                        "viu_amount",
+                      ]
+                    ) ??
+                    sourceCents /
+                      100;
+
+                  return (
+                    <div
+                      key={`${sourcePermanentId}-${index}`}
+                      className="rounded-xl border border-slate-200 bg-slate-50 p-3"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="font-medium text-slate-900">
+                            {
+                              sourcePermanentId
+                            }
+                          </p>
+
+                          <p className="text-xs text-slate-500">
+                            {
+                              sourceType
+                            }{" "}
+                            ·{" "}
+                            {formatNumber(
+                              sourceViu
+                            )}{" "}
+                            VIU
+                          </p>
+                        </div>
+
+                        <ImpactStatusPill
+                          status={
+                            sourceStatus
+                          }
+                        />
                       </div>
-
-                      <ImpactStatusPill status={sourceStatus} />
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                }
+              )}
             </div>
           ) : (
             <p className="mt-1 text-sm text-slate-500">
@@ -244,14 +442,25 @@ export function AllocationCard({ item }: AllocationCardProps) {
         </div>
       </div>
 
-      {verifyHref ? (
-        <Link
-          href={verifyHref}
-          className="mt-5 inline-flex rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-        >
-          Open allocation verification page
-        </Link>
-      ) : null}
+      <div className="mt-5 flex flex-wrap gap-3">
+        {manageHref ? (
+          <Link
+            href={manageHref}
+            className="inline-flex rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
+          >
+            Manage allocation draft
+          </Link>
+        ) : null}
+
+        {verifyHref ? (
+          <Link
+            href={verifyHref}
+            className="inline-flex rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Open allocation verification page
+          </Link>
+        ) : null}
+      </div>
     </article>
   );
 }

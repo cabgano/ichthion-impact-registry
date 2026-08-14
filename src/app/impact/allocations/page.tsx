@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AllocationCard } from "@/components/impact/AllocationCard";
 import { ImpactMetricCard } from "@/components/impact/ImpactMetricCard";
 import { ImpactPageHeader } from "@/components/impact/ImpactPageHeader";
@@ -82,8 +83,21 @@ function allocationCents(item: AllocationWithDetails) {
 
 function clientLabel(item: AllocationWithDetails) {
   return valueToString(
-    pickValue(item.client, ["client_name", "name", "client_code", "code"]) ??
-      pickValue(item.allocation, ["client_name", "client_code"]),
+
+    pickValue(item.client, [
+      "display_name",
+      "client_name",
+      "name",
+      "client_code",
+      "code",
+    ]) ??
+      pickValue(item.allocation, [
+        "client_display_name",
+        "client_name",
+        "client_code",
+      ]),
+
+
     "Unknown client"
   );
 }
@@ -121,10 +135,28 @@ export default async function ImpactAllocationsPage() {
     <>
       <ImpactPageHeader
         title="Client Allocations"
-        description="Asignaciones emitidas a clientes con sus fuentes, VIUs, kg equivalentes y hash verificable."
+        description="Asignaciones a clientes con sus fuentes, VIUs, kg equivalentes y trazabilidad verificable."
       >
-        <ImpactStatusPill status={errorMessage ? "warning" : "connected"} />
+        <ImpactStatusPill
+          status={
+            errorMessage
+              ? "warning"
+             : "connected"
+          }
+        />
+
+        <Link
+          href="/impact/allocations/new"
+          className="inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700"
+        >
+          Create allocation draft
+        </Link>
       </ImpactPageHeader>
+
+
+
+
+
 
       {errorMessage ? (
         <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">

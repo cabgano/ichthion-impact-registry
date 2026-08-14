@@ -25,6 +25,13 @@ export const impactNavItems: ImpactNavItem[] = [
     access: "operate",
   },
   {
+    href: "/impact/conversions",
+    label: "Conversions",
+    description:
+      "Historial y trazabilidad de conversiones kg → VIU.",
+    access: "read",
+  },
+  {
     href: "/impact",
     label: "Wallet",
     description:

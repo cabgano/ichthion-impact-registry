@@ -4,6 +4,10 @@ import {
 } from "next/navigation";
 
 import {
+  ApproveEvidencePackageButton,
+} from "@/components/impact/ApproveEvidencePackageButton";
+
+import {
   EvidenceDocumentActions,
 } from "@/components/impact/EvidenceDocumentActions";
 
@@ -27,6 +31,10 @@ import {
   getEvidencePackageReviewData,
   isValidEvidencePackageId,
 } from "@/lib/impact/evidence-review";
+
+import {
+  getCurrentImpactUserPermissions,
+} from "@/lib/impact/permissions";
 
 type EvidencePackageReviewPageProps = {
   params: Promise<{
@@ -154,13 +162,21 @@ export default async function EvidencePackageReviewPage({
     notFound();
   }
 
+  const [
+    reviewData,
+    permissions,
+  ] = await Promise.all([
+    getEvidencePackageReviewData(
+      packageId
+    ),
+
+    getCurrentImpactUserPermissions(),
+  ]);
+
   const {
     evidencePackage,
     errorMessage,
-  } =
-    await getEvidencePackageReviewData(
-      packageId
-    );
+  } = reviewData;
 
   if (
     !evidencePackage &&
@@ -194,6 +210,19 @@ export default async function EvidencePackageReviewPage({
   const integrityReady =
     integrity.integrityStatus ===
     "ready";
+
+  const packageCanBeApproved =
+    evidencePackage
+      .verificationStatus ===
+      "draft" &&
+    evidencePackage
+      .importStatus ===
+      "not_imported";
+
+  const packageIsApproved =
+    evidencePackage
+      .verificationStatus ===
+    "verified";
 
   return (
     <>
@@ -236,6 +265,74 @@ export default async function EvidencePackageReviewPage({
         />
       </ImpactPageHeader>
 
+      {permissions.can_verify_evidence &&
+      packageCanBeApproved ? (
+        <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 className="font-bold text-emerald-950">
+                Approval for conversion
+              </h2>
+
+              <p className="mt-1 text-sm text-emerald-800">
+                Approve this package after reviewing the evidence and confirming that the required external verification has been received.
+              </p>
+
+              <p className="mt-2 text-xs text-emerald-700">
+                This approval will not create VIUs or import kilograms yet.
+              </p>
+            </div>
+
+            <ApproveEvidencePackageButton
+              packageId={
+                evidencePackage.id
+              }
+              permanentId={
+                evidencePackage
+                  .permanentId
+              }
+              disabled={
+                !integrityReady
+              }
+              disabledReason="The package cannot be approved until all integrity checks are confirmed."
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {packageIsApproved ? (
+        <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-bold text-emerald-950">
+                Approved for conversion
+              </p>
+
+              <p className="mt-1 text-sm text-emerald-800">
+                This package has been verified and may continue to the conversion preview.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <ImpactStatusPill
+                status="verified"
+              />
+
+              <Link
+                href={`/impact/evidence/${evidencePackage.id}/conversion-preview`}
+                className="inline-flex items-center justify-center rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-600"
+              >
+                Preview conversion
+              </Link>
+            </div>
+          </div>
+
+          <p className="mt-3 text-xs text-emerald-700">
+            No VIUs, fractional VIUs or wallet movements have been created yet.
+          </p>
+        </div>
+      ) : null}
+
       {errorMessage ? (
         <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           {errorMessage}
@@ -249,7 +346,11 @@ export default async function EvidencePackageReviewPage({
             evidencePackage
               .totalReportedKg
           )} kg`}
-          helper="Todavía no importado"
+          helper={
+            packageIsApproved
+              ? "Approved, not imported"
+              : "Todavía no importado"
+          }
         />
 
         <ImpactMetricCard
@@ -408,7 +509,7 @@ export default async function EvidencePackageReviewPage({
       <div className="mt-6">
         <ImpactSection
           title="Integrity summary"
-          description="Este resumen confirma disponibilidad e integridad digital; todavía no representa el aval de VERSA."
+          description="Este resumen confirma disponibilidad e integridad digital; todavía no representa por sí solo la aprobación del impacto."
         >
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {[
