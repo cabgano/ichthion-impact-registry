@@ -44,6 +44,17 @@ function pickNumber(
   return fallback;
 }
 
+function asRecord(
+  value: unknown
+): Record<string, unknown> | null {
+  return (
+    typeof value === "object" &&
+    value !== null
+      ? (value as Record<string, unknown>)
+      : null
+  );
+}
+
 function formatNumber(value: string | number | null | undefined) {
   if (value === null || value === undefined) return "—";
 
@@ -104,6 +115,41 @@ export function FractionalTrancheCard({
     "No hash"
   );
 
+  const methodologyCode = pickString(
+    tranche,
+    ["methodology_code"],
+    "Not available"
+  );
+
+  const rawTranche =
+    tranche as unknown as Record<string, unknown>;
+
+  const canonicalManifest =
+    asRecord(
+      rawTranche.canonical_manifest_json
+    );
+
+  const methodologyManifest =
+    asRecord(
+      canonicalManifest?.methodology
+    );
+
+  const methodologyVersion =
+    typeof methodologyManifest?.version === "string"
+      ? methodologyManifest.version
+      : null;
+
+  const nativeMassPerViu =
+    typeof methodologyManifest?.native_mass_per_viu === "number" ||
+    typeof methodologyManifest?.native_mass_per_viu === "string"
+      ? methodologyManifest.native_mass_per_viu
+      : null;
+
+  const nativeMassUnit =
+    typeof methodologyManifest?.native_mass_unit === "string"
+      ? methodologyManifest.native_mass_unit
+      : null;
+
   return (
     <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
@@ -153,6 +199,25 @@ export function FractionalTrancheCard({
               {formatNumber(allocatedCents)} cent_VIUs
             </p>
           </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <p className="text-xs font-semibold uppercase text-slate-400">
+            Methodology
+          </p>
+
+          <p className="mt-1 font-semibold text-slate-950">
+            {methodologyCode}
+            {methodologyVersion
+              ? ` · v${methodologyVersion}`
+              : ""}
+          </p>
+
+          <p className="mt-1 text-xs text-slate-600">
+            {nativeMassPerViu !== null && nativeMassUnit
+              ? `1 VIU = ${formatNumber(nativeMassPerViu)} ${nativeMassUnit}`
+              : "This fractional tranche inherits the methodology of its source CONV."}
+          </p>
         </div>
 
         <div>

@@ -24,8 +24,16 @@ import {
 } from "@/components/impact/ProcessEvidencePackageConversionButton";
 
 import {
+  ConversionMethodologySelector,
+} from "@/components/impact/ConversionMethodologySelector";
+
+import {
   getEvidenceConversionPreview,
 } from "@/lib/impact/conversion-preview";
+
+import {
+  getSelectableViuMethodologies,
+} from "@/lib/impact/viu-methodologies";
 
 import {
   isValidEvidencePackageId,
@@ -34,6 +42,12 @@ import {
 type ConversionPreviewPageProps = {
   params: Promise<{
     packageId: string;
+  }>;
+
+  searchParams: Promise<{
+    methodology?:
+      | string
+      | string[];
   }>;
 };
 
@@ -83,6 +97,7 @@ function formatLabel(
 
 export default async function ConversionPreviewPage({
   params,
+  searchParams,
 }: ConversionPreviewPageProps) {
   const {
     packageId,
@@ -96,12 +111,81 @@ export default async function ConversionPreviewPage({
     notFound();
   }
 
+  const resolvedSearchParams =
+    await searchParams;
+
+  const methodologyParameter =
+    resolvedSearchParams
+      .methodology;
+
+  const requestedMethodologyCode =
+    Array.isArray(
+      methodologyParameter
+    )
+      ? methodologyParameter[0]
+      : methodologyParameter;
+
+  const {
+    methodologies,
+    errorMessage:
+      methodologiesErrorMessage,
+  } =
+    await getSelectableViuMethodologies();
+
+  const selectedMethodology =
+    methodologies.find(
+      (methodology) =>
+        methodology
+          .methodology_code ===
+        requestedMethodologyCode
+    ) ??
+
+    methodologies.find(
+      (methodology) =>
+        methodology.is_default
+    ) ??
+
+    methodologies[0] ??
+
+    null;
+
+  if (!selectedMethodology) {
+    return (
+      <>
+        <div className="mb-4">
+          <Link
+            href={`/impact/evidence/${packageId}`}
+            className="text-sm font-semibold text-slate-600 hover:text-slate-950"
+          >
+            ← Back to evidence package
+          </Link>
+        </div>
+
+        <ImpactPageHeader
+          title="Conversion Preview"
+          description="No selectable VIU methodology is currently available."
+        >
+          <ImpactStatusPill
+            status="warning"
+          />
+        </ImpactPageHeader>
+
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-900">
+          {methodologiesErrorMessage ??
+            "No methodology is available for conversion."}
+        </div>
+      </>
+    );
+  }
+
   const {
     preview,
     errorMessage,
   } =
     await getEvidenceConversionPreview(
-      packageId
+      packageId,
+      selectedMethodology
+        .methodology_code
     );
 
   if (!preview) {
@@ -170,6 +254,22 @@ export default async function ConversionPreviewPage({
           status="Preview only"
         />
       </ImpactPageHeader>
+
+      <div className="mb-6">
+        <ConversionMethodologySelector
+          packageId={
+            packageId
+          }
+          methodologies={
+            methodologies
+          }
+          selectedCode={
+            preview
+              .methodology
+              .code
+          }
+        />
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <ImpactMetricCard
@@ -308,9 +408,53 @@ export default async function ConversionPreviewPage({
       <div className="mt-6">
         <ImpactSection
           title="Planned conversion"
-          description="Resultado previsto utilizando 1 VIU por cada 1.000 kg y 1 cent_VIU por cada 10 kg acreditables."
+          description={`Resultado previsto bajo ${preview.methodology.code} · v${preview.methodology.version}. 1 VIU = ${formatNumber(
+            preview
+              .methodology
+              .native_mass_per_viu
+          )} ${preview.methodology.native_mass_unit}.`}
         >
           <div className="overflow-hidden rounded-2xl border border-slate-200">
+            <div className="grid gap-1 border-b border-slate-200 bg-slate-50 px-5 py-4 md:grid-cols-2">
+              <span className="text-sm text-slate-600">
+                Applied methodology
+              </span>
+
+              <strong className="text-sm text-slate-950 md:text-right">
+                {
+                  preview
+                    .methodology
+                    .code
+                }
+                {" · v"}
+                {
+                  preview
+                    .methodology
+                    .version
+                }
+              </strong>
+            </div>
+
+            <div className="grid gap-1 border-b border-slate-200 px-5 py-4 md:grid-cols-2">
+              <span className="text-sm text-slate-600">
+                VIU definition
+              </span>
+
+              <strong className="text-sm text-slate-950 md:text-right">
+                1 VIU ={" "}
+                {formatNumber(
+                  preview
+                    .methodology
+                    .native_mass_per_viu
+                )}{" "}
+                {
+                  preview
+                    .methodology
+                    .native_mass_unit
+                }
+              </strong>
+            </div>
+
             <div className="grid gap-1 border-b border-slate-200 bg-slate-50 px-5 py-4 md:grid-cols-2">
               <span className="text-sm text-slate-600">
                 Reported kilograms
@@ -479,6 +623,26 @@ export default async function ConversionPreviewPage({
             permanentId={
               preview
                 .package_permanent_id
+            }
+            methodologyCode={
+              preview
+                .methodology
+                .code
+            }
+            methodologyVersion={
+              preview
+                .methodology
+                .version
+            }
+            methodologyMassPerViu={
+              preview
+                .methodology
+                .native_mass_per_viu
+            }
+            methodologyMassUnit={
+              preview
+                .methodology
+                .native_mass_unit
             }
             reportedKg={
               preview.reported_kg

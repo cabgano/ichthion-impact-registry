@@ -92,7 +92,7 @@ export default async function ImpactViusPage() {
     <>
       <ImpactPageHeader
         title="VIU Cards"
-        description="Tarjetas VIU completas generadas desde kg verificados. Cada tarjeta tiene ID permanente, estado, manifest/hash y preparación para futuro mint."
+        description="Tarjetas VIU completas generadas desde kg verificados. Cada tarjeta muestra la metodología de origen, ID permanente, estado, manifest/hash y preparación para futuro mint."
       >
         <ImpactStatusPill status={errorMessage ? "warning" : "connected"} />
       </ImpactPageHeader>

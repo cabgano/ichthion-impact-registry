@@ -31,6 +31,26 @@ type RawConversionHistoryItem = {
     | number
     | string;
 
+  methodology_code: string;
+  methodology_version: string;
+
+  methodology_mass_per_viu:
+    | number
+    | string;
+
+  methodology_mass_unit: string;
+
+  methodology_kg_per_viu:
+    | number
+    | string;
+
+  methodology_kg_per_cent_viu:
+    | number
+    | string;
+
+  methodology_manifest_hash: string;
+  methodology_snapshot_ready: boolean;
+
   viu_cents_generated: number;
   full_viu_count: number;
   fractional_viu_cents: number;
@@ -89,6 +109,26 @@ export type ConversionHistoryItem = {
   nonCreditableResidualKg:
     | number
     | string;
+
+  methodologyCode: string;
+  methodologyVersion: string;
+
+  methodologyMassPerViu:
+    | number
+    | string;
+
+  methodologyMassUnit: string;
+
+  methodologyKgPerViu:
+    | number
+    | string;
+
+  methodologyKgPerCentViu:
+    | number
+    | string;
+
+  methodologyManifestHash: string;
+  methodologySnapshotReady: boolean;
 
   viuCentsGenerated: number;
   fullViuCount: number;
@@ -221,6 +261,41 @@ function isRawConversionHistoryItem(
     ) &&
 
     typeof value
+      .methodology_code ===
+      "string" &&
+
+    typeof value
+      .methodology_version ===
+      "string" &&
+
+    isNumberOrString(
+      value
+        .methodology_mass_per_viu
+    ) &&
+
+    typeof value
+      .methodology_mass_unit ===
+      "string" &&
+
+    isNumberOrString(
+      value
+        .methodology_kg_per_viu
+    ) &&
+
+    isNumberOrString(
+      value
+        .methodology_kg_per_cent_viu
+    ) &&
+
+    typeof value
+      .methodology_manifest_hash ===
+      "string" &&
+
+    typeof value
+      .methodology_snapshot_ready ===
+      "boolean" &&
+
+    typeof value
       .viu_cents_generated ===
       "number" &&
 
@@ -319,6 +394,38 @@ function normalizeConversionHistoryItem(
     nonCreditableResidualKg:
       conversion
         .non_creditable_residual_kg,
+
+    methodologyCode:
+      conversion
+        .methodology_code,
+
+    methodologyVersion:
+      conversion
+        .methodology_version,
+
+    methodologyMassPerViu:
+      conversion
+        .methodology_mass_per_viu,
+
+    methodologyMassUnit:
+      conversion
+        .methodology_mass_unit,
+
+    methodologyKgPerViu:
+      conversion
+        .methodology_kg_per_viu,
+
+    methodologyKgPerCentViu:
+      conversion
+        .methodology_kg_per_cent_viu,
+
+    methodologyManifestHash:
+      conversion
+        .methodology_manifest_hash,
+
+    methodologySnapshotReady:
+      conversion
+        .methodology_snapshot_ready,
 
     viuCentsGenerated:
       conversion
@@ -617,6 +724,25 @@ type RawConversionBatch = {
   viu_cents_generated: number;
   full_viu_count: number;
   fractional_viu_cents: number;
+
+  methodology_code?: string;
+  methodology_version?: string;
+
+  methodology_mass_per_viu?:
+    | number
+    | string;
+
+  methodology_mass_unit?: string;
+
+  methodology_kg_per_viu?:
+    | number
+    | string;
+
+  methodology_kg_per_cent_viu?:
+    | number
+    | string;
+
+  methodology_manifest_hash?: string;
 
   conversion_status: string;
   assets_generation_status: string;

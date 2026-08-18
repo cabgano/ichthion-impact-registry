@@ -31,6 +31,28 @@ type ConversionProcessResult = {
   conversion_permanent_id: string;
   conversion_result: string;
 
+  methodology: {
+    code: string;
+    version: string;
+
+    native_mass_per_viu:
+      | number
+      | string;
+
+    native_mass_unit: string;
+
+    kg_per_viu:
+      | number
+      | string;
+
+    kg_per_cent_viu:
+      | number
+      | string;
+
+    methodology_manifest_hash:
+      string;
+  };
+
   conversion_movement_id: string;
   conversion_movement_permanent_id: string;
 
@@ -74,6 +96,15 @@ type ProcessEvidencePackageConversionButtonProps = {
   packageId: string;
   permanentId: string;
 
+  methodologyCode: string;
+  methodologyVersion: string;
+
+  methodologyMassPerViu:
+    | number
+    | string;
+
+  methodologyMassUnit: string;
+
   reportedKg:
     | number
     | string;
@@ -103,6 +134,23 @@ function isConversionProcessResult(
       unknown
     >;
 
+  const methodology =
+    result.methodology;
+
+  if (
+    !methodology ||
+    typeof methodology !==
+      "object"
+  ) {
+    return false;
+  }
+
+  const methodologyRecord =
+    methodology as Record<
+      string,
+      unknown
+    >;
+
   return (
     typeof result
       .result_status ===
@@ -118,6 +166,14 @@ function isConversionProcessResult(
 
     typeof result
       .conversion_permanent_id ===
+      "string" &&
+
+    typeof methodologyRecord
+      .code ===
+      "string" &&
+
+    typeof methodologyRecord
+      .version ===
       "string" &&
 
     typeof result
@@ -155,6 +211,10 @@ function formatNumber(
 export function ProcessEvidencePackageConversionButton({
   packageId,
   permanentId,
+  methodologyCode,
+  methodologyVersion,
+  methodologyMassPerViu,
+  methodologyMassUnit,
   reportedKg,
   fullViuCount,
   fractionalViuCents,
@@ -189,6 +249,10 @@ export function ProcessEvidencePackageConversionButton({
           `Reported impact: ${formatNumber(
             reportedKg
           )} kg`,
+          `Methodology: ${methodologyCode} · v${methodologyVersion}`,
+          `VIU definition: 1 VIU = ${formatNumber(
+            methodologyMassPerViu
+          )} ${methodologyMassUnit}`,
           `Full VIUs: ${fullViuCount}`,
           `Fractional cent_VIUs: ${fractionalViuCents}`,
           `Non-creditable residual: ${formatNumber(
@@ -222,6 +286,9 @@ export function ProcessEvidencePackageConversionButton({
         {
           input_package_id:
             packageId,
+
+          input_methodology_code:
+            methodologyCode,
         }
       );
 
@@ -241,12 +308,26 @@ export function ProcessEvidencePackageConversionButton({
         );
       }
 
+      if (
+        data.methodology.code !==
+        methodologyCode
+      ) {
+        throw new Error(
+          `The conversion was returned under ${data.methodology.code}, but ${methodologyCode} was selected.`
+        );
+      }
+
       window.alert(
         [
           "Conversion completed successfully.",
           "",
           `Package: ${data.package_permanent_id}`,
           `Conversion: ${data.conversion_permanent_id}`,
+          `Methodology: ${data.methodology.code} · v${data.methodology.version}`,
+          `VIU definition: 1 VIU = ${formatNumber(
+            data.methodology
+              .native_mass_per_viu
+          )} ${data.methodology.native_mass_unit}`,
           `Import movement: ${data.import_movement_permanent_id}`,
           `Conversion movement: ${data.conversion_movement_permanent_id}`,
           "",

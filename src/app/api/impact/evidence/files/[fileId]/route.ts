@@ -29,6 +29,12 @@ type EvidenceFileAccessRow = {
   storage_path: string;
 };
 
+type ImpactPermissionRow = {
+  can_read:
+    | boolean
+    | null;
+};
+
 export const dynamic =
   "force-dynamic";
 
@@ -124,7 +130,7 @@ export async function GET(
 
   const {
     data:
-      permissionData,
+      permissionDataRaw,
 
     error:
       permissionError,
@@ -134,6 +140,11 @@ export async function GET(
         "current_impact_user_permissions"
       )
       .maybeSingle();
+
+  const permissionData =
+    permissionDataRaw as
+      | ImpactPermissionRow
+      | null;
 
   if (permissionError) {
     console.error(
@@ -202,8 +213,10 @@ export async function GET(
       "Evidence file lookup failed:",
       {
         fileId,
+
         message:
           evidenceFileError.message,
+
         code:
           evidenceFileError.code,
       }
@@ -240,13 +253,16 @@ export async function GET(
           .createSignedUrl(
             evidenceFile
               .storage_path,
+
             SIGNED_URL_TTL_SECONDS,
+
             {
               download:
                 evidenceFile
                   .file_name,
             }
           )
+
       : await supabase.storage
           .from(
             EVIDENCE_BUCKET
@@ -254,6 +270,7 @@ export async function GET(
           .createSignedUrl(
             evidenceFile
               .storage_path,
+
             SIGNED_URL_TTL_SECONDS
           );
 
@@ -266,12 +283,15 @@ export async function GET(
       "Evidence signed URL creation failed:",
       {
         fileId,
+
         packageId:
           evidenceFile
             .package_id,
+
         storagePath:
           evidenceFile
             .storage_path,
+
         message:
           signedUrlResult
             .error?.message,

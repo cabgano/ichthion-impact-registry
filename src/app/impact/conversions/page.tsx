@@ -55,6 +55,22 @@ function formatNumber(
   );
 }
 
+function formatPreciseNumber(
+  value:
+    | number
+    | string
+    | null
+) {
+  return new Intl.NumberFormat(
+    "en-US",
+    {
+      maximumFractionDigits: 8,
+    }
+  ).format(
+    toNumber(value)
+  );
+}
+
 function formatDate(
   value:
     | string
@@ -343,6 +359,55 @@ export default async function ConversionHistoryPage() {
                             conversion
                               .impactLine
                           )}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          Methodology
+                        </dt>
+
+                        <dd className="mt-1 text-sm font-bold text-slate-950">
+                          {
+                            conversion
+                              .methodologyCode
+                          }
+                          {" · v"}
+                          {
+                            conversion
+                              .methodologyVersion
+                          }
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          VIU definition
+                        </dt>
+
+                        <dd className="mt-1 text-sm font-bold text-slate-950">
+                          1 VIU ={" "}
+                          {formatPreciseNumber(
+                            conversion
+                              .methodologyMassPerViu
+                          )}{" "}
+                          {
+                            conversion
+                              .methodologyMassUnit
+                          }
+                        </dd>
+
+                        <dd className="mt-1 text-xs text-slate-500">
+                          {formatPreciseNumber(
+                            conversion
+                              .methodologyKgPerViu
+                          )}{" "}
+                          kg / VIU ·{" "}
+                          {formatPreciseNumber(
+                            conversion
+                              .methodologyKgPerCentViu
+                          )}{" "}
+                          kg / cent_VIU
                         </dd>
                       </div>
 

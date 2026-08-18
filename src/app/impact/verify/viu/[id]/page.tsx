@@ -203,6 +203,20 @@ export default async function ViuVerificationPage({
     null;
 
 
+  const methodologyCode =
+    conversion
+      ?.methodologyCode ??
+    asString(
+      record?.methodology_code
+    );
+
+
+  const methodologyVersion =
+    conversion
+      ?.methodologyVersion ??
+    null;
+
+
   /*
    * The allocation verification RPC already
    * exposes the MOV attached to each exact VIU.
@@ -476,6 +490,15 @@ export default async function ViuVerificationPage({
                   }
                 </p>
 
+                {methodologyCode ? (
+                  <p className="mt-2 text-xs font-semibold text-slate-700">
+                    Methodology: {methodologyCode}
+                    {methodologyVersion
+                      ? ` · v${methodologyVersion}`
+                      : ""}
+                  </p>
+                ) : null}
+
                 {
                   conversion
                     ? (
@@ -507,6 +530,15 @@ export default async function ViuVerificationPage({
                 <p className="mt-3 text-sm text-slate-600">
                   Current verified asset
                 </p>
+
+                {methodologyCode ? (
+                  <p className="mt-2 text-xs font-semibold text-slate-700">
+                    Generated under {methodologyCode}
+                    {methodologyVersion
+                      ? ` · v${methodologyVersion}`
+                      : ""}
+                  </p>
+                ) : null}
 
               </div>
 
@@ -616,6 +648,7 @@ export default async function ViuVerificationPage({
               "viu_cents",
               "viu_amount",
               "kg_equivalent",
+              "methodology_code",
 
               "source_verified_impact_permanent_id",
               "conversion_batch_permanent_id",

@@ -20,6 +20,7 @@ import {
 } from "@/components/impact/ImpactStatusPill";
 
 import {
+  getConversionHistoryData,
   getConversionTraceabilityData,
   isValidConversionId,
 } from "@/lib/impact/conversions";
@@ -61,6 +62,23 @@ function formatNumber(
     "en-US",
     {
       maximumFractionDigits: 2,
+    }
+  ).format(
+    toNumber(value)
+  );
+}
+
+function formatPreciseNumber(
+  value:
+    | number
+    | string
+    | null
+    | undefined
+) {
+  return new Intl.NumberFormat(
+    "en-US",
+    {
+      maximumFractionDigits: 8,
     }
   ).format(
     toNumber(value)
@@ -195,6 +213,68 @@ export default async function ConversionDetailPage({
       processChain,
   } = traceability;
 
+  const conversionHistory =
+    await getConversionHistoryData();
+
+  const historyConversion =
+    conversionHistory
+      .conversions
+      .find(
+        (item) =>
+          item.conversionBatchId ===
+          conversionId
+      ) ??
+    null;
+
+  const methodologyCode =
+    conversionBatch
+      .methodology_code ??
+    historyConversion
+      ?.methodologyCode ??
+    "Not available";
+
+  const methodologyVersion =
+    conversionBatch
+      .methodology_version ??
+    historyConversion
+      ?.methodologyVersion ??
+    "—";
+
+  const methodologyMassPerViu =
+    conversionBatch
+      .methodology_mass_per_viu ??
+    historyConversion
+      ?.methodologyMassPerViu ??
+    null;
+
+  const methodologyMassUnit =
+    conversionBatch
+      .methodology_mass_unit ??
+    historyConversion
+      ?.methodologyMassUnit ??
+    "—";
+
+  const methodologyKgPerViu =
+    conversionBatch
+      .methodology_kg_per_viu ??
+    historyConversion
+      ?.methodologyKgPerViu ??
+    null;
+
+  const methodologyKgPerCentViu =
+    conversionBatch
+      .methodology_kg_per_cent_viu ??
+    historyConversion
+      ?.methodologyKgPerCentViu ??
+    null;
+
+  const methodologyManifestHash =
+    conversionBatch
+      .methodology_manifest_hash ??
+    historyConversion
+      ?.methodologyManifestHash ??
+    null;
+
   return (
     <>
       <div className="mb-4">
@@ -272,6 +352,54 @@ export default async function ConversionDetailPage({
           )} kg`}
           helper="Accumulated as discard control"
         />
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Applied VIU methodology
+            </p>
+
+            <p className="mt-2 text-lg font-bold text-slate-950">
+              {methodologyCode}
+              {methodologyVersion !== "—"
+                ? ` · v${methodologyVersion}`
+                : ""}
+            </p>
+
+            <p className="mt-1 text-sm text-slate-700">
+              1 VIU ={" "}
+              {formatPreciseNumber(
+                methodologyMassPerViu
+              )}{" "}
+              {methodologyMassUnit}
+            </p>
+
+            <p className="mt-1 text-xs text-slate-500">
+              {formatPreciseNumber(
+                methodologyKgPerViu
+              )}{" "}
+              kg / VIU ·{" "}
+              {formatPreciseNumber(
+                methodologyKgPerCentViu
+              )}{" "}
+              kg / cent_VIU
+            </p>
+          </div>
+
+          {methodologyManifestHash ? (
+            <div className="max-w-xl rounded-xl bg-slate-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Methodology Manifest Hash
+              </p>
+
+              <p className="mt-2 break-all font-mono text-xs text-slate-700">
+                {methodologyManifestHash}
+              </p>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <div className="mt-6">
@@ -398,6 +526,13 @@ export default async function ConversionDetailPage({
                   conversionBatch
                     .created_at
                 )}
+              </p>
+
+              <p className="mt-2 text-xs font-semibold text-slate-700">
+                {methodologyCode}
+                {methodologyVersion !== "—"
+                  ? ` · v${methodologyVersion}`
+                  : ""}
               </p>
             </div>
 
@@ -629,6 +764,13 @@ export default async function ConversionDetailPage({
                         )}{" "}
                         kg
                       </p>
+
+                      <p className="mt-1 text-xs font-semibold text-emerald-900">
+                        Methodology: {asset.methodology_code}
+                        {methodologyVersion !== "—"
+                          ? ` · v${methodologyVersion}`
+                          : ""}
+                      </p>
                     </div>
 
                     <Link
@@ -681,6 +823,13 @@ export default async function ConversionDetailPage({
                         .kg_equivalent
                     )}{" "}
                     kg equivalent
+                  </p>
+
+                  <p className="mt-1 text-xs font-semibold text-violet-900">
+                    Methodology: {tranche.methodology_code}
+                    {methodologyVersion !== "—"
+                      ? ` · v${methodologyVersion}`
+                      : ""}
                   </p>
                 </article>
               )

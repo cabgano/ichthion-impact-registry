@@ -603,6 +603,21 @@ export default async function AllocationVerificationPage({
                       null;
 
 
+                    const methodologyCode =
+                      asString(
+                        source.methodology_code
+                      ) ??
+                      conversion
+                        ?.methodologyCode ??
+                      null;
+
+
+                    const methodologyVersion =
+                      conversion
+                        ?.methodologyVersion ??
+                      null;
+
+
                     return (
                       <article
                         key={
@@ -635,6 +650,15 @@ export default async function AllocationVerificationPage({
                                 source.kg_equivalent
                               )} kg
                             </p>
+
+                            {methodologyCode ? (
+                              <p className="mt-1 text-xs font-semibold text-slate-700">
+                                Methodology: {methodologyCode}
+                                {methodologyVersion
+                                  ? ` · v${methodologyVersion}`
+                                  : ""}
+                              </p>
+                            ) : null}
 
                           </div>
 
@@ -718,6 +742,15 @@ export default async function AllocationVerificationPage({
                                   "Not available"
                                 }
                               </p>
+
+                              {methodologyCode ? (
+                                <p className="mt-2 text-xs font-semibold text-slate-700">
+                                  {methodologyCode}
+                                  {methodologyVersion
+                                    ? ` · v${methodologyVersion}`
+                                    : ""}
+                                </p>
+                              ) : null}
 
                               {
                                 conversion

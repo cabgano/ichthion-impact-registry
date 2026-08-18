@@ -1,20 +1,57 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
+import {
+  FormEvent,
+  useState,
+} from "react";
 
-import { createClient } from "@/lib/supabase/client";
+import {
+  useRouter,
+} from "next/navigation";
+
+import {
+  createClient,
+} from "@/lib/supabase/client";
+
+type ImpactPermissionRow = {
+  can_read:
+    | boolean
+    | null;
+};
 
 export function LoginForm() {
-  const router = useRouter();
+  const router =
+    useRouter();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [
+    email,
+    setEmail,
+  ] =
+    useState("");
+
+  const [
+    password,
+    setPassword,
+  ] =
+    useState("");
+
+  const [
+    isSubmitting,
+    setIsSubmitting,
+  ] =
+    useState(false);
+
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] =
+    useState<
+      string | null
+    >(null);
 
   async function handleSubmit(
-    event: FormEvent<HTMLFormElement>
+    event:
+      FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
@@ -25,14 +62,23 @@ export function LoginForm() {
     setIsSubmitting(true);
     setErrorMessage(null);
 
-    const supabase = createClient();
+    const supabase =
+      createClient();
 
     try {
-      const { error: signInError } =
-        await supabase.auth.signInWithPassword({
-          email: email.trim().toLowerCase(),
-          password,
-        });
+      const {
+        error:
+          signInError,
+      } =
+        await supabase.auth
+          .signInWithPassword({
+            email:
+              email
+                .trim()
+                .toLowerCase(),
+
+            password,
+          });
 
       if (signInError) {
         throw new Error(
@@ -41,42 +87,65 @@ export function LoginForm() {
       }
 
       const {
-        data: permissions,
-        error: permissionsError,
-      } = await supabase
-        .rpc("current_impact_user_permissions")
-        .maybeSingle();
+        data:
+          permissionsRaw,
+
+        error:
+          permissionsError,
+      } =
+        await supabase
+          .rpc(
+            "current_impact_user_permissions"
+          )
+          .maybeSingle();
+
+      const permissions =
+        permissionsRaw as
+          | ImpactPermissionRow
+          | null;
 
       if (
         permissionsError ||
         !permissions ||
-        !permissions.can_read
+        permissions.can_read !==
+          true
       ) {
-        await supabase.auth.signOut({
-          scope: "local",
-        });
+        await supabase.auth
+          .signOut({
+            scope:
+              "local",
+          });
 
         throw new Error(
           "Esta cuenta no tiene un rol interno activo para acceder al Impact Registry."
         );
       }
 
-      router.replace("/impact");
+      router.replace(
+        "/impact"
+      );
+
       router.refresh();
+
     } catch (error) {
       setErrorMessage(
         error instanceof Error
           ? error.message
           : "No se pudo iniciar sesión."
       );
+
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(
+        false
+      );
     }
   }
 
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={
+        handleSubmit
+      }
       className="mt-8 space-y-5"
     >
       <label className="block text-sm font-medium text-slate-700">
@@ -87,11 +156,17 @@ export function LoginForm() {
           autoComplete="email"
           required
           value={email}
-          onChange={(event) =>
-            setEmail(event.target.value)
+          onChange={(
+            event
+          ) =>
+            setEmail(
+              event.target.value
+            )
           }
           placeholder="usuario@ichthion.com"
-          disabled={isSubmitting}
+          disabled={
+            isSubmitting
+          }
           className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-950 outline-none transition focus:border-slate-600 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-100"
         />
       </label>
@@ -103,11 +178,19 @@ export function LoginForm() {
           type="password"
           autoComplete="current-password"
           required
-          value={password}
-          onChange={(event) =>
-            setPassword(event.target.value)
+          value={
+            password
           }
-          disabled={isSubmitting}
+          onChange={(
+            event
+          ) =>
+            setPassword(
+              event.target.value
+            )
+          }
+          disabled={
+            isSubmitting
+          }
           className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-950 outline-none transition focus:border-slate-600 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-100"
         />
       </label>
@@ -119,14 +202,18 @@ export function LoginForm() {
           </p>
 
           <p className="mt-1">
-            {errorMessage}
+            {
+              errorMessage
+            }
           </p>
         </div>
       ) : null}
 
       <button
         type="submit"
-        disabled={isSubmitting}
+        disabled={
+          isSubmitting
+        }
         className="w-full rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isSubmitting
