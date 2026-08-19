@@ -13,22 +13,38 @@ type ConfirmAllocationDraftButtonProps = {
   reservedViuCents: number;
 };
 
-type ConfirmAllocationResult = {
+type ConfirmAndIssueAllocationResult = {
   allocation_id: string;
   allocation_permanent_id: string;
+  allocation_reference: string;
   client_code: string;
   allocation_status: string;
+
   confirmed_sources_count: number;
   confirmed_viu_cents: number;
+
   confirmed_viu_amount:
     | number
     | string
     | null;
+
   confirmed_kg_equivalent:
     | number
     | string
     | null;
+
   movement_count: number;
+
+  mint_preparations_count:
+    | number
+    | string;
+
+  issued_sources_count:
+    | number
+    | string;
+
+  allocation_manifest_hash: string;
+
   message: string;
 };
 
@@ -41,9 +57,9 @@ function isRecord(
   );
 }
 
-function isConfirmResult(
+function isConfirmAndIssueResult(
   value: unknown
-): value is ConfirmAllocationResult {
+): value is ConfirmAndIssueAllocationResult {
   if (!isRecord(value)) {
     return false;
   }
@@ -51,24 +67,34 @@ function isConfirmResult(
   return (
     typeof value.allocation_id === "string" &&
     typeof value.allocation_permanent_id === "string" &&
+    typeof value.allocation_reference === "string" &&
     typeof value.client_code === "string" &&
     typeof value.allocation_status === "string" &&
     typeof value.confirmed_sources_count === "number" &&
     typeof value.confirmed_viu_cents === "number" &&
     typeof value.movement_count === "number" &&
+    (
+      typeof value.mint_preparations_count === "number" ||
+      typeof value.mint_preparations_count === "string"
+    ) &&
+    (
+      typeof value.issued_sources_count === "number" ||
+      typeof value.issued_sources_count === "string"
+    ) &&
+    typeof value.allocation_manifest_hash === "string" &&
     typeof value.message === "string"
   );
 }
 
-function extractConfirmResult(
+function extractConfirmAndIssueResult(
   value: unknown
-): ConfirmAllocationResult | null {
+): ConfirmAndIssueAllocationResult | null {
   const candidate =
     Array.isArray(value)
       ? value[0]
       : value;
 
-  return isConfirmResult(candidate)
+  return isConfirmAndIssueResult(candidate)
     ? candidate
     : null;
 }
@@ -85,7 +111,7 @@ function formatNumber(
   return new Intl.NumberFormat(
     "en-US",
     {
-      maximumFractionDigits: 2,
+      maximumFractionDigits: 5,
     }
   ).format(
     Number.isFinite(numeric)
@@ -137,11 +163,8 @@ export function ConfirmAllocationDraftButton({
           `VIU: ${formatNumber(
             reservedViuCents / 100
           )}`,
-          `kg equivalent: ${formatNumber(
-            reservedViuCents * 10
-          )}`,
           "",
-          "This will permanently allocate the selected VIU cards to the client.",
+          "This will permanently allocate the selected VIU cards to the client, prepare their future MINT metadata, and issue the allocation.",
         ].join("\n")
       );
 
@@ -160,7 +183,7 @@ export function ConfirmAllocationDraftButton({
         data,
         error,
       } = await supabase.rpc(
-        "confirm_client_allocation",
+        "confirm_and_issue_client_allocation",
         {
           input_allocation_id:
             allocationId,
@@ -174,30 +197,37 @@ export function ConfirmAllocationDraftButton({
       }
 
       const result =
-        extractConfirmResult(
+        extractConfirmAndIssueResult(
           data
         );
 
       if (!result) {
         throw new Error(
-          "The allocation confirmation RPC returned an invalid response."
+          "The allocation confirmation and issuance RPC returned an invalid response."
         );
       }
 
       window.alert(
         [
-          "Allocation confirmed.",
+          "Allocation confirmed and issued.",
           "",
           `ALLOC: ${result.allocation_permanent_id}`,
+          `Reference: ${result.allocation_reference}`,
           `Status: ${result.allocation_status}`,
-          `Sources: ${result.confirmed_sources_count}`,
+          `Sources confirmed: ${result.confirmed_sources_count}`,
+          `Sources issued: ${formatNumber(
+            result.issued_sources_count
+          )}`,
           `VIU: ${formatNumber(
             result.confirmed_viu_amount
           )}`,
-          `kg: ${formatNumber(
+          `kg equivalent: ${formatNumber(
             result.confirmed_kg_equivalent
           )}`,
           `MOV records created: ${result.movement_count}`,
+          `MINT preparations: ${formatNumber(
+            result.mint_preparations_count
+          )}`,
         ].join("\n")
       );
 
@@ -210,7 +240,7 @@ export function ConfirmAllocationDraftButton({
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "The allocation could not be confirmed."
+          : "The allocation could not be confirmed and issued."
       );
     } finally {
       setIsConfirming(false);
@@ -258,12 +288,12 @@ export function ConfirmAllocationDraftButton({
         ].join(" ")}
       >
         {isConfirming
-          ? "Confirming allocation..."
+          ? "Confirming and issuing allocation..."
           : "Confirm allocation"}
       </button>
 
       <p className="text-xs text-slate-500">
-        Confirmation converts the selected VIU cards from reserved to allocated and creates the corresponding allocation movement records.
+        Confirmation permanently allocates the selected VIU cards, creates the corresponding allocation movement records, prepares one future MINT record per full VIU Digital Asset, and issues the allocation.
       </p>
     </div>
   );
