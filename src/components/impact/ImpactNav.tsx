@@ -20,6 +20,17 @@ function canViewNavItem(
   item: ImpactNavItem,
   permissions: ImpactUserPermissions
 ) {
+
+  if (
+    item.roles &&
+    !item.roles.includes(
+      permissions.impact_role
+    )
+  ) {
+    return false;
+  }
+
+
   if (item.access === "operate") {
     return permissions.can_operate_impact;
   }

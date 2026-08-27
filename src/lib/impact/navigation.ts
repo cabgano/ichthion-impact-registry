@@ -1,3 +1,7 @@
+import type {
+  ImpactRole,
+} from "@/lib/impact/types";
+
 export type ImpactNavAccess =
   | "read"
   | "operate";
@@ -7,6 +11,7 @@ export type ImpactNavItem = {
   label: string;
   description: string;
   access: ImpactNavAccess;
+  roles?: ImpactRole[];
 };
 
 export const impactNavItems: ImpactNavItem[] = [
@@ -58,6 +63,16 @@ export const impactNavItems: ImpactNavItem[] = [
     description:
       "Asignaciones emitidas a clientes.",
     access: "read",
+  },
+  {
+    href: "/impact/statements",
+    label: "Monthly Statements",
+    description:
+      "Estados mensuales congelados y su trazabilidad.",
+    access: "read",
+    roles: [
+      "impact_admin","technical_admin"
+    ],
   },
   {
     href: "/impact/mint-candidates",
