@@ -22,6 +22,10 @@ type ViuVerificationPageProps = {
 };
 
 
+const BASE_SEPOLIA_EXPLORER =
+  "https://sepolia.basescan.org";
+
+
 function asString(
   value: unknown
 ): string | null {
@@ -30,6 +34,12 @@ function asString(
     value.trim().length > 0
   ) {
     return value;
+  }
+
+  if (
+    typeof value === "number"
+  ) {
+    return String(value);
   }
 
   return null;
@@ -71,6 +81,29 @@ function asRecordArray(
         unknown
       > => item !== null
     );
+}
+
+
+function shortenValue(
+  value: string | null,
+  start = 14,
+  end = 10
+) {
+  if (!value) {
+    return "Not available";
+  }
+
+  if (
+    value.length <=
+    start + end + 3
+  ) {
+    return value;
+  }
+
+  return `${value.slice(
+    0,
+    start
+  )}...${value.slice(-end)}`;
 }
 
 
@@ -170,11 +203,122 @@ export default async function ViuVerificationPage({
     );
 
 
+  const mintReadinessStatus =
+    asString(
+      record
+        ?.mint_readiness_status
+    );
+
+
+  const onchainStatus =
+    asString(
+      record
+        ?.onchain_status
+    );
+
+
   const onchainMetadataHash =
     asString(
       record
         ?.onchain_metadata_hash
     );
+
+
+  /*
+   * Confirmed blockchain identity.
+   */
+  const chainId =
+    asString(
+      record?.chain_id
+    );
+
+
+  const contractAddress =
+    asString(
+      record?.contract_address
+    );
+
+
+  const tokenId =
+    asString(
+      record?.token_id
+    );
+
+
+  const tokenUri =
+    asString(
+      record?.token_uri
+    );
+
+
+  const tokenTxHash =
+    asString(
+      record?.token_tx_hash
+    );
+
+
+  const walletAddress =
+    asString(
+      record?.wallet_address
+    );
+
+
+  const onchainVerified =
+    verificationStatus ===
+      "assigned_asset_onchain_verified" &&
+    mintReadinessStatus ===
+      "minted_on_chain" &&
+    onchainStatus ===
+      "minted";
+
+
+  const level2Verified =
+    verificationStatus ===
+      "assigned_asset_verified_level2" ||
+    verificationStatus ===
+      "assigned_asset_verified_ready_for_future_mint" ||
+    verificationStatus ===
+      "assigned_asset_onchain_verified";
+
+
+  const futureMintPrepared =
+    Boolean(
+      mintMetadataPermanentId ||
+      onchainMetadataHash
+    );
+
+
+  const usesBaseSepolia =
+    chainId === "84532";
+
+
+  const transactionExplorerHref =
+    usesBaseSepolia &&
+    tokenTxHash
+      ? `${BASE_SEPOLIA_EXPLORER}/tx/${tokenTxHash}`
+      : null;
+
+
+  const contractExplorerHref =
+    usesBaseSepolia &&
+    contractAddress
+      ? `${BASE_SEPOLIA_EXPLORER}/address/${contractAddress}`
+      : null;
+
+
+  const walletExplorerHref =
+    usesBaseSepolia &&
+    walletAddress
+      ? `${BASE_SEPOLIA_EXPLORER}/address/${walletAddress}`
+      : null;
+
+
+  const tokenExplorerHref =
+    usesBaseSepolia &&
+    contractAddress &&
+    tokenId
+      ? `${BASE_SEPOLIA_EXPLORER}/token/${contractAddress}?a=${tokenId}`
+      : null;
 
 
   /*
@@ -270,26 +414,12 @@ export default async function ViuVerificationPage({
   }
 
 
-  const level2Verified =
-    verificationStatus ===
-      "assigned_asset_verified_level2" ||
-    verificationStatus ===
-      "assigned_asset_verified_ready_for_future_mint";
-
-
-  const futureMintPrepared =
-    Boolean(
-      mintMetadataPermanentId ||
-      onchainMetadataHash
-    );
-
-
   return (
     <>
 
       <ImpactPageHeader
         title={`VIU Verification · ${viuId}`}
-        description="Level 2 verification for a full VIU, including source impact, conversion and client allocation traceability."
+        description="Full VIU integrity verification from physical impact and conversion through client allocation, future mint preparation and confirmed blockchain identity."
       >
         <ImpactStatusPill
           status={
@@ -329,7 +459,7 @@ export default async function ViuVerificationPage({
           href="/impact/mint-candidates"
           className="inline-flex rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
         >
-          Future Mint Candidates
+          VIU Mint Candidates
         </Link>
 
       </div>
@@ -339,7 +469,7 @@ export default async function ViuVerificationPage({
         <>
 
           {/* ==================================================
-              LEVEL 2 VERIFICATION STAGE
+              VERIFICATION STAGE
               ================================================== */}
 
           <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5">
@@ -353,13 +483,14 @@ export default async function ViuVerificationPage({
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-600">
-                  Level 2 integrity and the future blockchain preparation stage are verified independently.
+                  Physical impact, allocation integrity and blockchain lifecycle are verified as consecutive layers of the same VIU.
                 </p>
 
               </div>
 
               <ImpactStatusPill
                 status={
+                  onchainVerified ||
                   level2Verified
                     ? "verified"
                     : String(
@@ -388,7 +519,7 @@ export default async function ViuVerificationPage({
                 </p>
 
                 <p className="mt-1 text-sm text-slate-600">
-                  Asset, source and allocation integrity are evaluated without requiring blockchain metadata.
+                  Asset, source and allocation integrity remain verified independently from blockchain execution.
                 </p>
 
               </div>
@@ -397,24 +528,54 @@ export default async function ViuVerificationPage({
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
 
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Future Mint
+                  {
+                    onchainVerified
+                      ? "Blockchain"
+                      : "Future Mint"
+                  }
                 </p>
 
                 <p className="mt-2 font-semibold text-slate-950">
                   {
-                    futureMintPrepared
-                      ? "Prepared"
-                      : "Not prepared yet"
+                    onchainVerified
+                      ? "Verified"
+                      : futureMintPrepared
+                        ? "Prepared"
+                        : "Not prepared yet"
                   }
                 </p>
 
                 <p className="mt-1 text-sm text-slate-600">
                   {
-                    futureMintPrepared
-                      ? "Future on-chain metadata exists for this VIU."
-                      : "Onchain Metadata Hash is not required at the current Level 2 allocation stage."
+                    onchainVerified
+                      ? "This VIU has a confirmed and persisted on-chain identity."
+                      : futureMintPrepared
+                        ? "Future on-chain metadata exists for this VIU and it is ready for the blockchain lifecycle."
+                        : "On-chain metadata has not yet been prepared for this VIU."
                   }
                 </p>
+
+                {
+                  onchainVerified
+                    ? (
+                      <div className="mt-3">
+                        <ImpactStatusPill
+                          status="minted"
+                        />
+                      </div>
+                    )
+                    : mintReadinessStatus
+                      ? (
+                        <div className="mt-3">
+                          <ImpactStatusPill
+                            status={
+                              mintReadinessStatus
+                            }
+                          />
+                        </div>
+                      )
+                      : null
+                }
 
               </div>
 
@@ -436,13 +597,13 @@ export default async function ViuVerificationPage({
               </h2>
 
               <p className="mt-1 text-sm text-slate-600">
-                Follow this VIU from verified physical impact through conversion and client allocation.
+                Follow this VIU from verified physical impact through conversion, client allocation and blockchain representation.
               </p>
 
             </div>
 
 
-            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
 
               {/* MVI */}
 
@@ -627,9 +788,404 @@ export default async function ViuVerificationPage({
 
               </div>
 
+
+              {/* BLOCKCHAIN / FUTURE MINT */}
+
+              <div
+                className={
+                  onchainVerified
+                    ? "rounded-xl border border-slate-300 bg-slate-50 p-4"
+                    : "rounded-xl border border-slate-200 p-4"
+                }
+              >
+
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {
+                    onchainVerified
+                      ? "6 · Blockchain"
+                      : "6 · Future Mint"
+                  }
+                </p>
+
+                <p className="mt-2 break-all font-semibold text-slate-950">
+                  {
+                    onchainVerified
+                      ? "On-chain verified"
+                      : futureMintPrepared
+                        ? "Prepared"
+                        : "Not prepared"
+                  }
+                </p>
+
+                {
+                  onchainVerified
+                    ? (
+                      <>
+                        <p className="mt-2 text-xs text-slate-500">
+                          Base Sepolia
+                        </p>
+
+                        <p className="mt-1 font-mono text-xs text-slate-700">
+                          Chain {chainId}
+                        </p>
+
+                        <p
+                          className="mt-2 break-all font-mono text-xs text-slate-700"
+                          title={
+                            tokenId ??
+                            undefined
+                          }
+                        >
+                          Token: {
+                            shortenValue(
+                              tokenId,
+                              10,
+                              8
+                            )
+                          }
+                        </p>
+
+                        <div className="mt-3">
+                          <ImpactStatusPill
+                            status="minted"
+                          />
+                        </div>
+                      </>
+                    )
+                    : (
+                      <>
+                        {
+                          mintMetadataPermanentId
+                            ? (
+                              <p className="mt-2 break-all font-mono text-xs text-slate-700">
+                                {mintMetadataPermanentId}
+                              </p>
+                            )
+                            : null
+                        }
+
+                        {
+                          mintReadinessStatus
+                            ? (
+                              <div className="mt-3">
+                                <ImpactStatusPill
+                                  status={
+                                    mintReadinessStatus
+                                  }
+                                />
+                              </div>
+                            )
+                            : null
+                        }
+                      </>
+                    )
+                }
+
+              </div>
+
             </div>
 
           </section>
+
+
+          {/* ==================================================
+              BLOCKCHAIN VERIFICATION
+              ================================================== */}
+
+          {
+            onchainVerified
+              ? (
+                <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5">
+
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+
+                    <div>
+
+                      <h2 className="text-base font-bold text-slate-950">
+                        Blockchain verification
+                      </h2>
+
+                      <p className="mt-1 text-sm text-slate-600">
+                        Confirmed blockchain identity associated with this canonical VIU Digital Asset.
+                      </p>
+
+                    </div>
+
+                    <ImpactStatusPill
+                      status="verified"
+                    />
+
+                  </div>
+
+
+                  <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Network
+                      </p>
+
+                      <p className="mt-2 font-semibold text-slate-950">
+                        {
+                          usesBaseSepolia
+                            ? "Base Sepolia"
+                            : `Chain ${chainId}`
+                        }
+                      </p>
+
+                      <p className="mt-1 font-mono text-xs text-slate-600">
+                        Chain ID: {chainId}
+                      </p>
+                    </div>
+
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Contract
+                      </p>
+
+                      <p
+                        className="mt-2 break-all font-mono text-xs font-semibold text-slate-800"
+                        title={
+                          contractAddress ??
+                          undefined
+                        }
+                      >
+                        {
+                          shortenValue(
+                            contractAddress
+                          )
+                        }
+                      </p>
+
+                      {
+                        contractExplorerHref
+                          ? (
+                            <a
+                              href={
+                                contractExplorerHref
+                              }
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-3 inline-flex text-sm font-semibold text-slate-700 underline underline-offset-4 hover:text-slate-950"
+                            >
+                              Open contract
+                            </a>
+                          )
+                          : null
+                      }
+                    </div>
+
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Token ID
+                      </p>
+
+                      <p
+                        className="mt-2 break-all font-mono text-xs font-semibold text-slate-800"
+                        title={
+                          tokenId ??
+                          undefined
+                        }
+                      >
+                        {
+                          shortenValue(
+                            tokenId,
+                            20,
+                            14
+                          )
+                        }
+                      </p>
+
+                      {
+                        tokenExplorerHref
+                          ? (
+                            <a
+                              href={
+                                tokenExplorerHref
+                              }
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-3 inline-flex text-sm font-semibold text-slate-700 underline underline-offset-4 hover:text-slate-950"
+                            >
+                              Open token
+                            </a>
+                          )
+                          : null
+                      }
+                    </div>
+
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Mint transaction
+                      </p>
+
+                      <p
+                        className="mt-2 break-all font-mono text-xs font-semibold text-slate-800"
+                        title={
+                          tokenTxHash ??
+                          undefined
+                        }
+                      >
+                        {
+                          shortenValue(
+                            tokenTxHash
+                          )
+                        }
+                      </p>
+
+                      {
+                        transactionExplorerHref
+                          ? (
+                            <a
+                              href={
+                                transactionExplorerHref
+                              }
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-3 inline-flex text-sm font-semibold text-slate-700 underline underline-offset-4 hover:text-slate-950"
+                            >
+                              Open transaction
+                            </a>
+                          )
+                          : null
+                      }
+                    </div>
+
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Mint recipient / Wallet
+                      </p>
+
+                      <p
+                        className="mt-2 break-all font-mono text-xs font-semibold text-slate-800"
+                        title={
+                          walletAddress ??
+                          undefined
+                        }
+                      >
+                        {
+                          shortenValue(
+                            walletAddress
+                          )
+                        }
+                      </p>
+
+                      {
+                        walletExplorerHref
+                          ? (
+                            <a
+                              href={
+                                walletExplorerHref
+                              }
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-3 inline-flex text-sm font-semibold text-slate-700 underline underline-offset-4 hover:text-slate-950"
+                            >
+                              Open wallet
+                            </a>
+                          )
+                          : null
+                      }
+                    </div>
+
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        On-chain status
+                      </p>
+
+                      <div className="mt-2">
+                        <ImpactStatusPill
+                          status={
+                            onchainStatus ??
+                            "unknown"
+                          }
+                        />
+                      </div>
+
+                      <p className="mt-2 text-xs text-slate-600">
+                        Registry lifecycle: {
+                          mintReadinessStatus ??
+                          "unknown"
+                        }
+                      </p>
+                    </div>
+
+                  </div>
+
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+
+                    <div className="rounded-xl border border-slate-200 p-4">
+
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        On-chain metadata hash
+                      </p>
+
+                      <p
+                        className="mt-2 break-all font-mono text-xs text-slate-700"
+                        title={
+                          onchainMetadataHash ??
+                          undefined
+                        }
+                      >
+                        {
+                          onchainMetadataHash ??
+                          "Not available"
+                        }
+                      </p>
+
+                    </div>
+
+
+                    <div className="rounded-xl border border-slate-200 p-4">
+
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Token URI
+                      </p>
+
+                      <p
+                        className="mt-2 break-all font-mono text-xs text-slate-700"
+                        title={
+                          tokenUri ??
+                          undefined
+                        }
+                      >
+                        {
+                          tokenUri ??
+                          "Not available"
+                        }
+                      </p>
+
+                      {
+                        tokenUri
+                          ? (
+                            <a
+                              href={
+                                tokenUri
+                              }
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-3 inline-flex text-sm font-semibold text-slate-700 underline underline-offset-4 hover:text-slate-950"
+                            >
+                              Open canonical metadata
+                            </a>
+                          )
+                          : null
+                      }
+
+                    </div>
+
+                  </div>
+
+                </section>
+              )
+              : null
+          }
 
 
           {/* ==================================================
@@ -664,6 +1220,13 @@ export default async function ViuVerificationPage({
               "future_token_id",
               "mint_readiness_status",
               "onchain_status",
+
+              "chain_id",
+              "contract_address",
+              "token_id",
+              "token_tx_hash",
+              "wallet_address",
+              "token_uri",
             ]}
             hashFields={[
               "asset_manifest_hash",
