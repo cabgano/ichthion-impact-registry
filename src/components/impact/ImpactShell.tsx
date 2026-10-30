@@ -1,4 +1,7 @@
+
+import Image from "next/image";
 import type { ReactNode } from "react";
+import { PortalDocumentsSyncPanel } from "./PortalDocumentsSyncPanel";
 
 import { ImpactNav } from "./ImpactNav";
 import { ImpactRoleBadge } from "./ImpactRoleBadge";
@@ -29,18 +32,30 @@ export async function ImpactShell({
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-6 py-6 lg:grid-cols-[280px_1fr]">
         <aside className="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:min-h-[calc(100vh-3rem)]">
           <div>
-            <div className="mb-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Ichthion
-              </p>
+            {/* Ichthion Branding */}
+            <div className="mb-5 flex items-center gap-2.5">
+              <Image
+                src="/logo.png"
+                alt="Ichthion Logo"
+                width={72}
+                height={72}
+                priority
+                className="h-[72px] w-[72px] shrink-0 object-contain"
+              />
 
-              <h1 className="text-xl font-bold text-slate-950">
-                Impact Registry
-              </h1>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Ichthion
+                </p>
 
-              <p className="mt-1 text-sm text-slate-500">
-                VIU Wallet · Level 2
-              </p>
+                <h1 className="whitespace-nowrap text-lg font-bold tracking-tight text-slate-950">
+                  Impact Registry
+                </h1>
+
+                <p className="mt-1 whitespace-nowrap text-xs text-slate-500">
+                  VIU Wallet · Level 2
+                </p>
+              </div>
             </div>
 
             <div className="mb-4">
@@ -59,6 +74,10 @@ export async function ImpactShell({
           {canManagePortalShadow && (
             <div className="mt-12 lg:mt-auto lg:pt-12">
               <PortalShadowSyncPanel />
+
+              <div className="mt-5">
+              <PortalDocumentsSyncPanel />
+              </div>
             </div>
           )}
         </aside>

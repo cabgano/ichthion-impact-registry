@@ -58,7 +58,7 @@ function validateForm(
 
   if (!/^\d{6}$/.test(form.periodKey)) {
     errors.periodKey =
-      "Use el formato YYYYMM, por ejemplo 202607.";
+      "Use the YYYYMM format, for example 202607.";
   } else {
     const month = Number(
       form.periodKey.slice(4, 6)
@@ -66,25 +66,25 @@ function validateForm(
 
     if (month < 1 || month > 12) {
       errors.periodKey =
-        "El mes debe estar entre 01 y 12.";
+        "The month must be between 01 and 12.";
     }
   }
 
   if (!form.scopeCode.trim()) {
     errors.scopeCode =
-      "El código del alcance o evento es obligatorio.";
+      "The scope or event code is required.";
   } else if (
     !/^[A-Z0-9_]+$/.test(
       form.scopeCode.trim()
     )
   ) {
     errors.scopeCode =
-      "Use únicamente letras mayúsculas, números y guiones bajos.";
+      "Use only uppercase letters, numbers, and underscores.";
   }
 
   if (!form.scopeName.trim()) {
     errors.scopeName =
-      "El nombre del alcance o evento es obligatorio.";
+      "Project and impact identification is required.";
   }
 
   const kilograms = Number(
@@ -97,12 +97,12 @@ function validateForm(
     kilograms <= 0
   ) {
     errors.totalReportedKg =
-      "Ingrese una cantidad de kilogramos mayor que cero.";
+      "Enter a reported kilogram amount greater than zero.";
   }
 
   if (!form.description.trim()) {
     errors.description =
-      "La descripción del impacto es obligatoria.";
+      "The impact description is required.";
   }
 
   return errors;
@@ -124,10 +124,9 @@ export function EvidenceIntakeForm() {
     null
   );
 
-  const [documents, setDocuments] =
-    useState<EvidenceSelectedDocument[]>(
-      []
-    );
+  const [documents, setDocuments] = useState(
+    [] as EvidenceSelectedDocument[]
+  );
 
   const [
     documentsError,
@@ -219,7 +218,7 @@ export function EvidenceIntakeForm() {
 
     if (!principalDocument) {
       setDocumentsError(
-        "Debe seleccionar el informe principal del impacto."
+        "You must select the main impact report."
       );
     } else {
       setDocumentsError(null);
@@ -294,20 +293,18 @@ export function EvidenceIntakeForm() {
         >
           <div className="mb-6">
             <h3 className="text-lg font-bold text-slate-950">
-              Información del impacto
+              Impact Information
             </h3>
 
             <p className="mt-1 text-sm text-slate-600">
-              Registre la información
-              básica del evento antes de
-              cargar su evidencia
-              documental.
+              Enter the basic impact details before
+              uploading supporting documentation.
             </p>
           </div>
 
           <div className="grid gap-5 md:grid-cols-2">
             <label className="text-sm font-medium text-slate-700">
-              Periodo (YYYYMM)
+              Reporting Period (YYYYMM)
 
               <input
                 type="text"
@@ -334,7 +331,7 @@ export function EvidenceIntakeForm() {
             </label>
 
             <label className="text-sm font-medium text-slate-700">
-              Línea de impacto
+              Impact Line
 
               <select
                 value={
@@ -356,17 +353,17 @@ export function EvidenceIntakeForm() {
                 </option>
 
                 <option value="mingas">
-                  Mingas
+                  Community Cleanups (Mingas)
                 </option>
 
                 <option value="recyclers_base">
-                  Recyclers Base
+                  Grassroots Recyclers
                 </option>
               </select>
             </label>
 
             <label className="text-sm font-medium text-slate-700">
-              Tipo de alcance
+              Scope Type
 
               <select
                 value={
@@ -398,7 +395,7 @@ export function EvidenceIntakeForm() {
             </label>
 
             <label className="text-sm font-medium text-slate-700">
-              Kilogramos reportados
+              Reported Kilograms
 
               <input
                 type="number"
@@ -429,11 +426,11 @@ export function EvidenceIntakeForm() {
             </label>
 
             <label className="text-sm font-medium text-slate-700">
-              Código del alcance o evento
+              Scope / Event Code
 
               <input
                 type="text"
-                placeholder="TECH_EVENT_202607"
+                placeholder="Enter a unique code for each impact event"
                 value={form.scopeCode}
                 onChange={(event) =>
                   updateField(
@@ -446,6 +443,10 @@ export function EvidenceIntakeForm() {
                 }
               />
 
+              <span className="mt-1 block text-xs font-normal leading-5 text-slate-500">
+                Example: SAN_PEDRO_CUMBAYA_20261015_01
+              </span>
+
               {errors.scopeCode ? (
                 <span className="mt-1 block text-xs text-red-600">
                   {errors.scopeCode}
@@ -454,11 +455,11 @@ export function EvidenceIntakeForm() {
             </label>
 
             <label className="text-sm font-medium text-slate-700">
-              Nombre del alcance o evento
+              Project &amp; Impact Identification
 
               <input
                 type="text"
-                placeholder="Technology deployment — July 2026"
+                placeholder="Project Name — Location — Date"
                 value={form.scopeName}
                 onChange={(event) =>
                   updateField(
@@ -471,6 +472,10 @@ export function EvidenceIntakeForm() {
                 }
               />
 
+              <span className="mt-1 block text-xs font-normal leading-5 text-slate-500">
+                Example: San Pedro River Cleanup — Cumbayá — October 15, 2026
+              </span>
+
               {errors.scopeName ? (
                 <span className="mt-1 block text-xs text-red-600">
                   {errors.scopeName}
@@ -479,12 +484,12 @@ export function EvidenceIntakeForm() {
             </label>
           </div>
 
-          <label className="mt-5 block text-sm font-medium text-slate-700">
-            Descripción del impacto
+          <label className="mt-10 block text-sm font-medium text-slate-700">
+            Impact Description
 
             <textarea
               rows={4}
-              placeholder="Describa el evento, actividad o fuente que produjo el impacto reportado."
+              placeholder="Describe the event, activity, or source that generated the reported impact."
               value={form.description}
               onChange={(event) =>
                 updateField(
@@ -505,11 +510,11 @@ export function EvidenceIntakeForm() {
           </label>
 
           <label className="mt-5 block text-sm font-medium text-slate-700">
-            Notas internas
+            Internal Notes
 
             <textarea
               rows={3}
-              placeholder="Observaciones internas para el equipo de Ichthion."
+              placeholder="Internal notes for the Ichthion team."
               value={
                 form.internalNotes
               }
@@ -544,14 +549,14 @@ export function EvidenceIntakeForm() {
               onClick={handleReset}
               className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Limpiar
+              Clear Form
             </button>
 
             <button
               type="submit"
               className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Validar información
+              Validate Information
             </button>
           </div>
         </fieldset>
@@ -560,7 +565,7 @@ export function EvidenceIntakeForm() {
       <aside className="space-y-4">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h3 className="font-bold text-slate-950">
-            Flujo operativo
+            Operational Workflow
           </h3>
 
           <ol className="mt-4 space-y-3 text-sm text-slate-600">
@@ -568,40 +573,35 @@ export function EvidenceIntakeForm() {
               <strong className="text-slate-900">
                 1.
               </strong>{" "}
-              Registrar datos del
-              impacto.
+              Record impact details.
             </li>
 
             <li>
               <strong className="text-slate-900">
                 2.
               </strong>{" "}
-              Cargar evidencia
-              documental.
+              Upload supporting evidence.
             </li>
 
             <li>
               <strong className="text-slate-900">
                 3.
               </strong>{" "}
-              Revisar y verificar el
-              paquete.
+              Review and verify the evidence package.
             </li>
 
             <li>
               <strong className="text-slate-900">
                 4.
               </strong>{" "}
-              Importar los kg
-              verificados.
+              Import verified kilograms.
             </li>
 
             <li>
               <strong className="text-slate-900">
                 5.
               </strong>{" "}
-              Convertir el impacto en
-              VIUs.
+              Convert verified impact into VIUs.
             </li>
           </ol>
         </div>
@@ -609,13 +609,13 @@ export function EvidenceIntakeForm() {
         {validatedForm ? (
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
             <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-              Información validada
+              Validated Information
             </p>
 
             <dl className="mt-4 space-y-3 text-sm">
               <div>
                 <dt className="text-emerald-700">
-                  Periodo
+                  Reporting Period
                 </dt>
 
                 <dd className="font-semibold text-emerald-950">
@@ -627,19 +627,21 @@ export function EvidenceIntakeForm() {
 
               <div>
                 <dt className="text-emerald-700">
-                  Línea
+                  Impact Line
                 </dt>
 
                 <dd className="font-semibold text-emerald-950">
-                  {
-                    validatedForm.impactLine
-                  }
+                  {validatedForm.impactLine === "technology"
+                    ? "Technology"
+                    : validatedForm.impactLine === "mingas"
+                    ? "Community Cleanups (Mingas)"
+                    : "Grassroots Recyclers"}
                 </dd>
               </div>
 
               <div>
                 <dt className="text-emerald-700">
-                  Código del evento
+                  Scope / Event Code
                 </dt>
 
                 <dd className="break-all font-mono text-xs font-semibold text-emerald-950">
@@ -651,7 +653,7 @@ export function EvidenceIntakeForm() {
 
               <div>
                 <dt className="text-emerald-700">
-                  Evento
+                  Project &amp; Impact Identification
                 </dt>
 
                 <dd className="font-semibold text-emerald-950">
@@ -663,7 +665,7 @@ export function EvidenceIntakeForm() {
 
               <div>
                 <dt className="text-emerald-700">
-                  Kilogramos reportados
+                  Reported Kilograms
                 </dt>
 
                 <dd className="font-semibold text-emerald-950">
@@ -681,7 +683,7 @@ export function EvidenceIntakeForm() {
 
               <div>
                 <dt className="text-emerald-700">
-                  Documentos seleccionados
+                  Selected Documents
                 </dt>
 
                 <dd className="font-semibold text-emerald-950">
@@ -693,10 +695,9 @@ export function EvidenceIntakeForm() {
             </dl>
 
             <p className="mt-4 text-xs leading-5 text-emerald-800">
-              Validación local completada.
-              Revise la información antes
-              de crear el paquete y cargar
-              los documentos.
+              Local validation completed.
+              Review the information before creating
+              the evidence package and uploading documents.
             </p>
 
             <EvidenceUploadPanel
@@ -743,15 +744,13 @@ export function EvidenceIntakeForm() {
         ) : (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5">
             <p className="text-sm font-semibold text-slate-700">
-              Sin vista previa
+              No Preview Available
             </p>
 
             <p className="mt-1 text-sm text-slate-500">
-              Complete el formulario,
-              seleccione el informe
-              principal y valide la
-              información para revisar el
-              paquete.
+              Complete the form, select the main impact
+              report, and validate the information
+              to preview the evidence package.
             </p>
           </div>
         )}

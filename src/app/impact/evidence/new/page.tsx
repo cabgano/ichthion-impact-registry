@@ -12,7 +12,7 @@ export default async function NewEvidencePackagePage() {
       <ImpactPageHeader
         eyebrow="Operational workflow"
         title="New evidence package"
-        description="Registre la información inicial de un nuevo evento de impacto antes de cargar, verificar e importar su evidencia."
+        description="Record the details of a new impact event before uploading, verifying, and importing its supporting evidence."
       >
         <ImpactStatusPill
           status={canOperate ? "operational" : "read_only"}

@@ -1,0 +1,363 @@
+﻿/**
+ * Ichthion â€” Registry -> Client Portal Document Shadow
+ *
+ * Reads the already-authorized portal_viu_evidence manifest and copies the
+ * corresponding physical objects to a PRIVATE bucket in Client Portal.
+ * The same source file is copied once per authorized tenant, irrespective of
+ * the number of VIUs linked to that file.
+ *
+ * Usage (from Impact Registry repo):
+ *   node scripts/sync-portal-documents.ts --dry-run
+ *   node scripts/sync-portal-documents.ts
+ *   node scripts/sync-portal-documents.ts --tenant-id=<uuid> --dry-run
+ */
+
+import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
+import { loadEnvFile } from "node:process";
+
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+
+if (existsSync(".env.local")) {
+  loadEnvFile(".env.local");
+}
+
+const REGISTRY_BUCKET = "monthly-evidence-packages";
+const PORTAL_BUCKET = "portal-documents";
+const PAGE_SIZE = 500;
+const ID_BATCH_SIZE = 100;
+
+const dryRun = process.argv.includes("--dry-run");
+const skipMissingSource = process.argv.includes("--skip-missing-source");
+const tenantArg = process.argv.find((value) =>
+  value.startsWith("--tenant-id=")
+);
+const requestedTenantId = tenantArg?.slice("--tenant-id=".length) ?? null;
+
+type PortalEvidence = {
+  id: string;
+  tenant_id: string;
+  portal_viu_id: string;
+  registry_evidence_file_id: string;
+  original_filename: string;
+  mime_type: string | null;
+  calculated_sha256: string | null;
+  declared_sha256: string | null;
+  hash_match: boolean | null;
+  verification_status: string | null;
+  storage_path: string | null;
+  copied_sha256: string | null;
+};
+
+type PortalViu = {
+  id: string;
+  tenant_id: string;
+  allocation_status: string | null;
+};
+
+type RegistryEvidenceFile = {
+  id: string;
+  package_id: string;
+  file_name: string;
+  storage_path: string;
+};
+
+function requiredEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`${name} is not configured.`);
+  return value;
+}
+
+function adminClient(url: string, key: string): SupabaseClient {
+  return createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+function checksum(bytes: Uint8Array): string {
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
+function expectedHash(raw: string | null): string | null {
+  if (!raw) return null;
+  const normalized = raw.trim().toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(normalized)) {
+    throw new Error(`Invalid SHA-256 value: ${raw}`);
+  }
+  return normalized;
+}
+
+function chunks<T>(items: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    result.push(items.slice(i, i + size));
+  }
+  return result;
+}
+
+async function readAll<T>(
+  client: SupabaseClient,
+  table: string,
+  fields: string
+): Promise<T[]> {
+  const result: T[] = [];
+  for (let offset = 0; ; offset += PAGE_SIZE) {
+    const { data, error } = await client
+      .from(table)
+      .select(fields)
+      .order("id", { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+
+    if (error) throw new Error(`${table}: ${error.message}`);
+    const page = (data ?? []) as T[];
+    result.push(...page);
+    if (page.length < PAGE_SIZE) break;
+  }
+  return result;
+}
+
+async function findRegistryFiles(
+  registry: SupabaseClient,
+  ids: string[]
+): Promise<Map<string, RegistryEvidenceFile>> {
+  const files = new Map<string, RegistryEvidenceFile>();
+  for (const batch of chunks(ids, ID_BATCH_SIZE)) {
+    const { data, error } = await registry
+      .from("monthly_evidence_files")
+      .select("id,package_id,file_name,storage_path")
+      .in("id", batch);
+    if (error) {
+      throw new Error(`Could not read Registry evidence files: ${error.message}`);
+    }
+    for (const row of (data ?? []) as RegistryEvidenceFile[]) {
+      files.set(row.id, row);
+    }
+  }
+  return files;
+}
+
+function isMissingObject(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const detail = error as { message?: string; status?: number; statusCode?: string };
+  return (
+    detail.status === 404 ||
+    detail.statusCode === "404" ||
+    /(?:object|resource|file) not found/i.test(detail.message ?? "")
+  );
+}
+
+async function downloadBytes(
+  client: SupabaseClient,
+  bucket: string,
+  storagePath: string
+): Promise<Uint8Array> {
+  const { data, error } = await client.storage.from(bucket).download(storagePath);
+  if (error || !data) {
+    throw new Error(
+      `Could not download ${bucket}/${storagePath}: ${error?.message ?? "empty response"}`
+    );
+  }
+  return new Uint8Array(await data.arrayBuffer());
+}
+
+async function readExistingCopy(
+  portal: SupabaseClient,
+  storagePath: string
+): Promise<Uint8Array | null> {
+  const { data, error } = await portal.storage
+    .from(PORTAL_BUCKET)
+    .download(storagePath);
+
+  if (error) {
+    if (isMissingObject(error)) return null;
+    throw new Error(`Portal Storage check failed: ${error.message}`);
+  }
+  if (!data) throw new Error("Portal Storage returned no file data.");
+  return new Uint8Array(await data.arrayBuffer());
+}
+
+async function main() {
+  const registry = adminClient(
+    requiredEnv("NEXT_PUBLIC_SUPABASE_URL"),
+    requiredEnv("SUPABASE_SERVICE_ROLE_KEY")
+  );
+  const portal = adminClient(
+    requiredEnv("PORTAL_SUPABASE_URL"),
+    requiredEnv("PORTAL_SUPABASE_SERVICE_ROLE_KEY")
+  );
+
+  const evidence = await readAll<PortalEvidence>(
+    portal,
+    "portal_viu_evidence",
+    "id,tenant_id,portal_viu_id,registry_evidence_file_id,original_filename,mime_type,calculated_sha256,declared_sha256,hash_match,verification_status,storage_path,copied_sha256"
+  );
+  const portalVius = await readAll<PortalViu>(
+    portal,
+    "portal_vius",
+    "id,tenant_id,allocation_status"
+  );
+  const viusById = new Map(portalVius.map((viu) => [viu.id, viu]));
+
+  // Verify all manifest rows before any writes. A multi-VIU evidence file is
+  // represented by multiple rows, but must map to the correct tenant each time.
+  const eligibleRows: PortalEvidence[] = [];
+  for (const row of evidence) {
+    if (requestedTenantId && row.tenant_id !== requestedTenantId) continue;
+    const viu = viusById.get(row.portal_viu_id);
+    if (!viu || viu.tenant_id !== row.tenant_id || viu.allocation_status !== "issued") {
+      throw new Error(
+        `Invalid tenant/issued-VIU association for Portal evidence ${row.id}. No files copied.`
+      );
+    }
+    eligibleRows.push(row);
+  }
+
+  const sourceFiles = await findRegistryFiles(
+    registry,
+    [...new Set(eligibleRows.map((row) => row.registry_evidence_file_id))]
+  );
+
+  const byTenantAndFile = new Map<string, PortalEvidence[]>();
+  for (const row of eligibleRows) {
+    const key = `${row.tenant_id}/${row.registry_evidence_file_id}`;
+    const existing = byTenantAndFile.get(key) ?? [];
+    existing.push(row);
+    byTenantAndFile.set(key, existing);
+  }
+
+  console.log(`Mode: ${dryRun ? "DRY RUN" : "WRITE"}`);
+  console.log(`Manifest rows: ${eligibleRows.length}`);
+  console.log(`Unique tenant/document copies: ${byTenantAndFile.size}`);
+
+  let copied = 0;
+  let unchanged = 0;
+  let repaired = 0;
+  let failures = 0;
+  let missingSources = 0;
+
+  for (const [destinationPath, rows] of byTenantAndFile) {
+    const representative = rows[0];
+    const source = sourceFiles.get(representative.registry_evidence_file_id);
+
+    try {
+      if (!source?.storage_path) {
+        throw new Error("Source monthly_evidence_files row/storage_path is missing.");
+      }
+      // Reject a failed integrity check instead of publishing the document.
+      if (rows.some((row) => row.hash_match === false ||
+          ["rejected", "hash_mismatch"].includes((row.verification_status ?? "").toLowerCase()))) {
+        throw new Error("Evidence is rejected or has a known hash mismatch.");
+      }
+
+      const declared = new Set<string>();
+      for (const row of rows) {
+        for (const raw of [row.calculated_sha256, row.declared_sha256]) {
+          const hash = expectedHash(raw);
+          if (hash) declared.add(hash);
+        }
+      }
+      if (declared.size > 1) {
+        throw new Error("Inconsistent snapshot SHA-256 hashes for the same evidence file.");
+      }
+
+      if (dryRun) {
+        console.log(`[PLAN] ${destinationPath} <- ${source.storage_path} (${rows.length} VIU link(s))`);
+        continue;
+      }
+
+      const sourceBytes = await downloadBytes(
+        registry,
+        REGISTRY_BUCKET,
+        source.storage_path
+      );
+      const sourceHash = checksum(sourceBytes);
+      if (declared.size === 1 && sourceHash !== [...declared][0]) {
+        throw new Error("Original object SHA-256 does not match Registry evidence metadata.");
+      }
+
+      const currentCopy = await readExistingCopy(portal, destinationPath);
+      const existingHash = currentCopy ? checksum(currentCopy) : null;
+      const needsUpload = existingHash !== sourceHash;
+
+      if (needsUpload) {
+        const { error: uploadError } = await portal.storage
+          .from(PORTAL_BUCKET)
+          .upload(destinationPath, sourceBytes, {
+            contentType: representative.mime_type || "application/octet-stream",
+            upsert: true,
+            cacheControl: "0",
+          });
+        if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+
+        const verifiedCopy = await downloadBytes(portal, PORTAL_BUCKET, destinationPath);
+        if (checksum(verifiedCopy) !== sourceHash) {
+          throw new Error("Copied object failed SHA-256 verification.");
+        }
+      }
+
+      const alreadyRecorded = rows.every(
+        (row) => row.storage_path === destinationPath &&
+          row.copied_sha256?.toLowerCase() === sourceHash
+      );
+      if (!alreadyRecorded || needsUpload) {
+        const { data: updatedRows, error: updateError } = await portal
+          .from("portal_viu_evidence")
+          .update({
+            storage_path: destinationPath,
+            copied_sha256: sourceHash,
+            copied_at: new Date().toISOString(),
+          })
+          .eq("tenant_id", representative.tenant_id)
+          .eq("registry_evidence_file_id", representative.registry_evidence_file_id)
+          .select("id");
+        if (updateError || !updatedRows?.length) {
+          throw new Error(`Metadata update failed: ${updateError?.message ?? "no affected rows"}`);
+        }
+      }
+
+      if (needsUpload && existingHash) repaired++;
+      else if (needsUpload) copied++;
+      else unchanged++;
+      console.log(`[OK] ${destinationPath} (${rows.length} VIU link(s))`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (
+        !dryRun &&
+        skipMissingSource &&
+        message.startsWith("Could not download monthly-evidence-packages/") &&
+        message.endsWith(": Object not found")
+      ) {
+        missingSources++;
+        console.warn(`[MISSING_SOURCE] ${destinationPath}: ${message}`);
+        continue;
+      }
+      failures++;
+      console.error(`[FAIL] ${destinationPath}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  if (dryRun) {
+    console.log(`Planned: ${byTenantAndFile.size - failures} | Invalid: ${failures}`);
+    if (failures) {
+      throw new Error(`${failures} planned document copy/copies failed validation.`);
+    }
+    console.log("PASS: Document sync dry run complete. No changes written.");
+    return;
+  }
+
+  console.log(`Copied: ${copied} | Unchanged: ${unchanged} | Repaired: ${repaired} | Missing source: ${missingSources} | Failed: ${failures}`);
+  if (failures) {
+    throw new Error(`${failures} document copy/copies failed; sync is incomplete.`);
+  }
+  if (missingSources > 0) {
+    console.warn(`PARTIAL: ${missingSources} source copies are missing.`);
+    return;
+  }
+  console.log("PASS: Registry -> Portal document sync completed.");
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
+
